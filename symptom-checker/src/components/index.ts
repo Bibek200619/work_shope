@@ -5,3 +5,7 @@ export { RiskBadge } from './RiskBadge';
 export { Loader } from './Loader';
 export { EmergencyModal } from './EmergencyModal';
 export { Disclaimer } from './Disclaimer';
+export { FeatureCard } from './FeatureCard';
+export { AmbientBackground } from './AmbientBackground';
+export { SpotlightCard } from './SpotlightCard';
+export { Button } from './Button';

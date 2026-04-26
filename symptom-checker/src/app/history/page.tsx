@@ -1,165 +1,159 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { Navbar } from '@/components';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Navbar, Loader, AmbientBackground, SpotlightCard, Button } from '@/components';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
+
+interface Prediction {
+  id: string;
+  created_at: string;
+  symptoms: string[];
+  predicted_diseases: Array<{ name: string; probability: number; description: string }>;
+  risk_level: string;
+  risk_score: number;
+}
 
 export default function HistoryPage() {
-  // This is a placeholder page. In a real app, this would fetch history from localStorage or a database
-  const mockHistory = [
-    {
-      id: 1,
-      symptoms: ['fever', 'cough', 'sore throat'],
-      riskLevel: 'MEDIUM',
-      date: new Date(Date.now() - 86400000),
-      topDisease: 'Flu',
-    },
-    {
-      id: 2,
-      symptoms: ['headache', 'dizziness'],
-      riskLevel: 'LOW',
-      date: new Date(Date.now() - 172800000),
-      topDisease: 'Tension Headache',
-    },
-  ];
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [history, setHistory] = useState<Prediction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const formatDate = (date: Date) => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace('/login');
+      } else {
+        setUser(session.user);
+        setAuthLoading(false);
+      }
+    };
+    checkUser();
+  }, [router]);
 
-    if (date.toDateString() === today.toDateString()) {
-      return `Today at ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return `Yesterday`;
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-  };
+  useEffect(() => {
+    if (!user) return;
+    const fetchHistory = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
-  const getRiskColor = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'LOW':
-        return 'border-emerald-500/50 bg-emerald-500/10';
-      case 'MEDIUM':
-        return 'border-yellow-500/50 bg-yellow-500/10';
-      case 'HIGH':
-        return 'border-red-500/50 bg-red-500/10';
-      case 'EMERGENCY':
-        return 'border-red-600/50 bg-red-600/10';
-      default:
-        return 'border-gray-500/50 bg-gray-500/10';
-    }
-  };
+        if (error) throw error;
+        setHistory(data || []);
+      } catch (err) {
+        console.error("Error fetching history:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [user]);
 
-  const getRiskIcon = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'LOW':
-        return '🟢';
-      case 'MEDIUM':
-        return '🟡';
-      case 'HIGH':
-        return '🔴';
-      case 'EMERGENCY':
-        return '🚨';
-      default:
-        return '❓';
-    }
-  };
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--bg-base)]">
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <>
+      <AmbientBackground />
       <Navbar />
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          {/* Header */}
-          <div className="mb-12 fade-in-up">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors mb-6"
-            >
-              ← Back to Home
-            </Link>
 
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Analysis History
-            </h1>
-            <p className="text-lg text-gray-300">
-              View your previous health screenings and analyses.
-            </p>
+      <main className="flex-1 overflow-auto relative z-10 py-10 fade-in-up">
+        <div className="max-w-4xl mx-auto px-6">
+          
+          <div className="mb-10 border-b border-[var(--border-default)] pb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-semibold mb-2 tracking-tight">System Logs</h1>
+              <p className="text-[var(--fg-muted)] text-sm">Historical symptom analysis and predictions.</p>
+            </div>
+            <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+              Back to Dashboard
+            </Button>
           </div>
 
-          {/* History Cards */}
-          {mockHistory.length > 0 ? (
-            <div className="space-y-4 mb-12">
-              {mockHistory.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="glass fade-in-up p-6 hover:border-blue-500/50 transition-all duration-300 cursor-pointer"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`px-3 py-1 rounded-full border text-sm font-semibold ${getRiskColor(item.riskLevel)}`}>
-                          <span>{getRiskIcon(item.riskLevel)} {item.riskLevel}</span>
+          {loading ? (
+            <div className="py-20 flex justify-center">
+              <Loader />
+            </div>
+          ) : history.length === 0 ? (
+            <SpotlightCard className="p-12 text-center border-dashed">
+              <div className="text-4xl mb-4 opacity-50">📭</div>
+              <h3 className="text-xl font-semibold mb-2">No Records Found</h3>
+              <p className="text-[var(--fg-muted)] mb-6 text-sm">You haven't initialized any symptom checks yet.</p>
+              <Button onClick={() => router.push('/dashboard')}>
+                Start Analysis
+              </Button>
+            </SpotlightCard>
+          ) : (
+            <div className="space-y-6">
+              {history.map((record) => {
+                const date = new Date(record.created_at).toLocaleDateString(undefined, {
+                  year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                const isEmergency = record.risk_level === 'EMERGENCY';
+                const colorVar = isEmergency ? 'var(--risk-emergency)' :
+                                 record.risk_level === 'HIGH' ? 'var(--risk-high)' :
+                                 record.risk_level === 'MEDIUM' ? 'var(--risk-medium)' :
+                                 'var(--risk-low)';
+
+                return (
+                  <SpotlightCard key={record.id} className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
+                      <div>
+                        <span className="text-xs text-[var(--fg-subtle)] font-mono tracking-widest uppercase mb-3 block">
+                          {date}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {record.symptoms?.map((s, idx) => (
+                            <span key={idx} className="px-3 py-1 rounded-md bg-[#0F0F12] border border-[var(--border-default)] text-sm text-[var(--fg-primary)] shadow-inner">
+                              {s}
+                            </span>
+                          ))}
                         </div>
-                        <span className="text-sm text-gray-400">{formatDate(item.date)}</span>
                       </div>
-
-                      <p className="text-white font-semibold mb-2">
-                        Top Prediction: <span className="text-blue-300">{item.topDisease}</span>
-                      </p>
-
-                      <p className="text-sm text-gray-400">
-                        Symptoms: <span className="text-gray-300">{item.symptoms.join(', ')}</span>
-                      </p>
+                      
+                      <div className="flex items-center gap-2 border border-[var(--border-default)] bg-[var(--surface)] px-3 py-1.5 rounded-full">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colorVar, boxShadow: `0 0 10px ${colorVar}` }} />
+                        <span className="text-xs font-mono uppercase tracking-widest" style={{ color: colorVar }}>
+                          {record.risk_level}
+                        </span>
+                      </div>
                     </div>
 
-                    <button className="px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-500/50 text-blue-300 hover:bg-blue-500/30 transition-all duration-300 whitespace-nowrap">
-                      View Details →
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="glass p-12 text-center fade-in-up">
-              <div className="text-5xl mb-4">📋</div>
-              <h2 className="text-2xl font-bold text-white mb-2">No History Yet</h2>
-              <p className="text-gray-400 mb-6">
-                Start by analyzing your symptoms to build your health screening history.
-              </p>
-              <Link
-                href="/"
-                className="inline-block px-6 py-3 rounded-lg bg-gradient-primary text-white font-bold hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
-              >
-                Start New Analysis
-              </Link>
+                    {record.predicted_diseases && record.predicted_diseases.length > 0 && (
+                      <div className="pt-6 border-t border-[var(--border-default)]">
+                        <h4 className="text-xs font-mono text-[var(--fg-muted)] mb-4 uppercase tracking-widest">Neural Predictions</h4>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          {record.predicted_diseases.map((disease, idx) => (
+                            <div key={idx} className="p-4 rounded-xl bg-[#0F0F12] border border-[var(--border-default)] flex justify-between items-center transition-colors hover:border-[var(--border-hover)]">
+                              <span className="text-sm font-medium">{disease.name}</span>
+                              <span className="text-[var(--accent)] text-sm font-mono tracking-widest">
+                                {Math.round(disease.probability * 100)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </SpotlightCard>
+                );
+              })}
             </div>
           )}
-
-          {/* Info Section */}
-          <div className="glass p-8 fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <h3 className="text-xl font-bold text-white mb-4">📌 About Your History</h3>
-            <p className="text-gray-300 mb-4">
-              Your analysis history helps you track health patterns over time. Each analysis includes:
-            </p>
-            <ul className="space-y-2 text-gray-300 ml-4">
-              <li>✓ Symptoms entered</li>
-              <li>✓ Risk level assessment</li>
-              <li>✓ Top disease predictions</li>
-              <li>✓ Date and time of analysis</li>
-            </ul>
-          </div>
         </div>
-
-        {/* Footer */}
-        <footer className="border-t border-white/10 py-8 px-4 text-center text-gray-400 text-sm mt-12">
-          <p>
-            © 2024 MediAssist. This tool is for informational purposes only.
-          </p>
-        </footer>
       </main>
     </>
   );

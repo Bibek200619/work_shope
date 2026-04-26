@@ -1,22 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SymptomProvider } from "@/contexts/SymptomContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "MediAssist - AI Health Symptom Checker",
-  description: "An intelligent AI-powered health symptom checker and risk predictor. Check your symptoms and get instant insights.",
-  keywords: "health, symptoms, checker, AI, diagnosis, medical, health screening",
+  description: "An intelligent AI-powered health symptom checker and risk predictor.",
+  keywords: "health, symptoms, checker, AI, diagnosis, medical",
 };
 
 export default function RootLayout({
@@ -25,11 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-gradient-to-br from-black via-slate-900 to-black">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[#050506] font-sans">
         <SymptomProvider>
           {children}
         </SymptomProvider>
